@@ -1,0 +1,22 @@
+{
+  "name": "servicios-automatizaciones-web",
+  "version": "1.0.0",
+  "description": "Sitio web de servicios de automatizaciones y desarrollo de sitios web. Landing page optimizada para SEO, GEO y CRO con backend de captura de leads.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "automatizaciones",
+    "sitios web",
+    "desarrollo web",
+    "leads",
+    "landing page"
+  ],
+  "author": "Servicios",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

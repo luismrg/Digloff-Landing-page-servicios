@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Panel de administración · Digloff</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <style>
+    .admin{min-height:100vh;display:flex;flex-direction:column}
+    .admin-top{position:sticky;top:0;z-index:40;background:rgba(11,15,26,.92);
+      backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+    .admin-bar{display:flex;align-items:center;gap:14px;height:60px;flex-wrap:wrap}
+    .admin-bar .brand{font-size:1.05rem}
+    .admin-bar .spacer{margin-left:auto}
+    .tabset{display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);
+      border-radius:999px;padding:4px}
+    .tabset button{border:0;background:transparent;color:var(--txt-soft);font:inherit;
+      font-weight:600;padding:8px 16px;border-radius:999px;cursor:pointer;transition:.15s}
+    .tabset button.active{background:var(--accent);color:#04122e}
+    .admin-body{padding:24px 0 60px}
+    .statline{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+    .chip{background:var(--surface);border:1px solid var(--line);border-radius:999px;
+      padding:8px 14px;font-size:.85rem;color:var(--txt-soft)}
+    .chip b{color:var(--txt)}
+    table{width:100%;border-collapse:collapse;background:var(--surface);
+      border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:.9rem}
+    th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+    th{color:var(--txt-mute);font-weight:600;text-transform:uppercase;font-size:.72rem;letter-spacing:.08em}
+    tr:last-child td{border-bottom:0}
+    td.wrap{max-width:280px;word-wrap:break-word}
+    .empty{color:var(--txt-mute);text-align:center;padding:40px 0}
+    .muted{color:var(--txt-mute)}
+    .tag{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.72rem;font-weight:700}
+    .tag.pendiente{background:rgba(255,193,7,.18);color:#ffd24a}
+    .tag.confirmada{background:rgba(43,213,118,.18);color:#2bd576}
+    .actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+    .btn-mini{background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--txt);
+      padding:8px 14px;border-radius:8px;cursor:pointer;font:inherit;font-weight:600}
+    .btn-mini:hover{background:rgba(255,255,255,.12)}
+    .login-wrap{flex:1;display:grid;place-items:center;padding:40px 20px}
+    .login-card{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--line);
+      border-radius:var(--radius);padding:32px;box-shadow:var(--shadow)}
+    .login-card h1{font-size:1.5rem;margin-bottom:6px}
+    .login-card p{color:var(--txt-soft);margin-bottom:20px;font-size:.92rem}
+    .scrolly{overflow-x:auto}
+    .hidden{display:none!important}
+    .copy-ok{color:var(--cta);font-size:.78rem;margin-left:8px}
+  </style>
+</head>
+<body class="admin">
+  <!-- Login -->
+  <div id="login" class="login-wrap">
+    <div class="login-card">
+      <div class="brand" style="font-size:1.2rem;margin-bottom:18px">
+        <span class="brand-mark" aria-hidden="true">⚡</span>
+        <span class="brand-text">Dig<span class="brand-accent">loff</span></span>
+      </div>
+      <h1>Panel de administración</h1>
+      <p>Introduce tu contraseña para ver los leads y reservas recibidos.</p>
+      <form id="login-form" novalidate>
+        <div class="form-row">
+          <label for="pw">Contraseña</label>
+          <input id="pw" type="password" autocomplete="current-password" required autofocus />
+        </div>
+        <button type="submit" class="btn btn-cta btn-block">Entrar</button>
+        <p class="form-note" id="login-status" role="status" aria-live="polite"></p>
+      </form>
+      <p class="form-mini"><a href="/">← Volver a la web</a></p>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="hidden">
+    <div class="admin-top">
+      <div class="container admin-bar">
+        <span class="brand"><span class="brand-mark">⚡</span> Dig<span class="brand-accent">loff</span></span>
+        <div class="tabset" role="tablist">
+          <button id="tab-leads" class="active" type="button">Leads</button>
+          <button id="tab-bookings" type="button">Reservas</button>
+        </div>
+        <span class="spacer"></span>
+        <button id="refresh" class="btn-mini" type="button">Actualizar</button>
+        <button id="logout" class="btn-mini" type="button">Cerrar sesión</button>
+      </div>
+    </div>
+    <div class="container admin-body">
+      <div class="statline">
+        <span class="chip">Total: <b id="count-total">0</b></span>
+        <span class="chip">Hoy: <b id="count-today">0</b></span>
+        <span class="chip">Última semana: <b id="count-week">0</b></span>
+        <button id="export" class="btn-mini" type="button">Exportar CSV</button>
+      </div>
+      <div class="scrolly">
+        <table id="table-leads">
+          <thead><tr><th>Fecha</th><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Servicio</th><th>Mensaje</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <table id="table-bookings" class="hidden">
+          <thead><tr><th>Fecha solicitud</th><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Cita</th><th>Hora</th><th>Servicio</th><th>Notas</th><th>Estado</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="empty hidden" id="empty">Sin registros todavía. Cuando alguien envíe el formulario aparecerá aquí.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/admin.js" defer></script>
+</body>
+</html>

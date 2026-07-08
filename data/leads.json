@@ -1,0 +1,13 @@
+[
+  {
+    "id": "55b57901-a878-4f79-8f05-376df2f6f5a9",
+    "name": "Luis Rodriguez",
+    "email": "luismrg7@gmail.com",
+    "phone": "+1 08093025082",
+    "service": "Integración de software",
+    "message": "",
+    "source": "http://localhost:3000/",
+    "ip": "::1",
+    "createdAt": "2026-07-08T22:33:29.447Z"
+  }
+]
