@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const crypto = require('crypto');
 
 // Cargar variables del archivo .env si no están ya en el entorno
@@ -37,27 +38,49 @@ if (!ADMIN_PASSWORD) {
 }
 
 // Archivo de almacenamiento de leads
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = process.env.DATA_DIR || path.join(os.tmpdir(), 'digloff-data');
 const LEADS_FILE = path.join(DATA_DIR, 'leads.json');
 const BOOKINGS_FILE = path.join(DATA_DIR, 'bookings.json');
+const memoryStore = { leads: [], bookings: [] };
 
 function ensureStorage() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  if (!fs.existsSync(LEADS_FILE)) fs.writeFileSync(LEADS_FILE, '[]', 'utf8');
-  if (!fs.existsSync(BOOKINGS_FILE)) fs.writeFileSync(BOOKINGS_FILE, '[]', 'utf8');
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    if (!fs.existsSync(LEADS_FILE)) fs.writeFileSync(LEADS_FILE, '[]', 'utf8');
+    if (!fs.existsSync(BOOKINGS_FILE)) fs.writeFileSync(BOOKINGS_FILE, '[]', 'utf8');
+  } catch (err) {
+    console.warn('[AVISO] No se pudo preparar el almacenamiento persistente:', err.message);
+  }
 }
 ensureStorage();
 
-function readJson(file) {
+function readJson(file, fallback = []) {
   try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return Array.isArray(parsed) ? parsed : fallback;
   } catch {
-    return [];
+    return fallback;
   }
 }
 
 function writeJson(file, data) {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+  try {
+    fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('[AVISO] No se pudo guardar el archivo de datos:', err.message);
+  }
+  return data;
+}
+
+function readStored(key, file) {
+  const data = readJson(file, memoryStore[key]);
+  memoryStore[key] = Array.isArray(data) ? data : memoryStore[key];
+  return memoryStore[key];
+}
+
+function writeStored(key, file, data) {
+  memoryStore[key] = Array.isArray(data) ? data : memoryStore[key];
+  return writeJson(file, memoryStore[key]);
 }
 
 // Middleware
@@ -87,7 +110,7 @@ app.post('/api/leads', (req, res) => {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ ok: false, error: 'Email no válido.' });
   }
-  const leads = readJson(LEADS_FILE);
+  const leads = readStored('leads', LEADS_FILE);
   const lead = {
     id: crypto.randomUUID(),
     name: String(name || '').slice(0, 120),
@@ -100,7 +123,7 @@ app.post('/api/leads', (req, res) => {
     createdAt: new Date().toISOString()
   };
   leads.push(lead);
-  writeJson(LEADS_FILE, leads);
+  writeStored('leads', LEADS_FILE, leads);
   return res.json({ ok: true, id: lead.id });
 });
 
@@ -110,7 +133,7 @@ app.post('/api/bookings', (req, res) => {
   if (!name || !email) {
     return res.status(400).json({ ok: false, error: 'Nombre y email son obligatorios.' });
   }
-  const bookings = readJson(BOOKINGS_FILE);
+  const bookings = readStored('bookings', BOOKINGS_FILE);
   const booking = {
     id: crypto.randomUUID(),
     name: String(name).slice(0, 120),
@@ -124,7 +147,7 @@ app.post('/api/bookings', (req, res) => {
     createdAt: new Date().toISOString()
   };
   bookings.push(booking);
-  writeJson(BOOKINGS_FILE, bookings);
+  writeStored('bookings', BOOKINGS_FILE, bookings);
   return res.json({ ok: true, id: booking.id });
 });
 
@@ -161,7 +184,7 @@ function authAdmin(req, res, next) {
 
 // ---------- API: Listar leads (protegido) ----------
 app.get('/api/admin/leads', authAdmin, (req, res) => {
-  const leads = readJson(LEADS_FILE).sort((a, b) =>
+  const leads = readStored('leads', LEADS_FILE).slice().sort((a, b) =>
     new Date(b.createdAt) - new Date(a.createdAt)
   );
   res.json({ ok: true, leads });
@@ -169,7 +192,7 @@ app.get('/api/admin/leads', authAdmin, (req, res) => {
 
 // ---------- API: Listar reservas (protegido) ----------
 app.get('/api/admin/bookings', authAdmin, (req, res) => {
-  const bookings = readJson(BOOKINGS_FILE).sort((a, b) =>
+  const bookings = readStored('bookings', BOOKINGS_FILE).slice().sort((a, b) =>
     new Date(b.createdAt) - new Date(a.createdAt)
   );
   res.json({ ok: true, bookings });
