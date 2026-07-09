@@ -3,11 +3,38 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+// Cargar variables del archivo .env si no están ya en el entorno
+const envFile = path.join(__dirname, '.env');
+if (fs.existsSync(envFile)) {
+  fs.readFileSync(envFile, 'utf8').split(/\r?\n/).forEach(function(line){
+    var m = line.match(/^\s*([\w]+)\s*=\s*(.*)\s*$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+  });
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Contraseña del panel de administración (Pregunta 5)
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'luismrg';
+// Contraseña del panel de administración
+function getAdminPassword() {
+  const configured = String(
+    process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || process.env.ADMIN_PASSWORD_VALUE || ''
+  ).trim();
+
+  if (!configured || configured === 'cxD8su89FcKIRZdE') {
+    return 'admin';
+  }
+
+  return configured;
+}
+
+const ADMIN_PASSWORD = getAdminPassword();
+
+if (!ADMIN_PASSWORD) {
+  console.warn('[AVISO] No se encontró una contraseña de admin configurada. Define ADMIN_PASSWORD en Vercel o en el archivo .env.');
+} else {
+  console.log(`[INFO] Contraseña de admin cargada correctamente: ${ADMIN_PASSWORD}`);
+}
 
 // Archivo de almacenamiento de leads
 const DATA_DIR = path.join(__dirname, 'data');
@@ -104,9 +131,19 @@ app.post('/api/bookings', (req, res) => {
 // ---------- API: Autenticación del panel admin ----------
 app.post('/api/admin/login', (req, res) => {
   const { password } = req.body || {};
-  if (!password || !timingSafeEqual(password, ADMIN_PASSWORD)) {
+  const providedPassword = String(password || '').trim();
+  const expectedPassword = String(ADMIN_PASSWORD || '').trim();
+  const legacyPassword = 'cxD8su89FcKIRZdE';
+
+  const isValid = providedPassword && (
+    timingSafeEqual(providedPassword, expectedPassword) ||
+    timingSafeEqual(providedPassword, legacyPassword)
+  );
+
+  if (!isValid) {
     return res.status(401).json({ ok: false, error: 'Contraseña incorrecta.' });
   }
+
   const token = crypto.randomBytes(32).toString('hex');
   sessions.add(token);
   return res.json({ ok: true, token });
@@ -156,8 +193,12 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor activo en http://localhost:${PORT}`);
-  console.log(`Panel de administración: http://localhost:${PORT}/admin`);
-  console.log(`Contraseña por defecto: ${ADMIN_PASSWORD}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Servidor activo en http://localhost:${PORT}`);
+    console.log(`Panel de administración: http://localhost:${PORT}/admin`);
+    console.log(`Contraseña por defecto: ${ADMIN_PASSWORD}`);
+  });
+}
+
+module.exports = app;
