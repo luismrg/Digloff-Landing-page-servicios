@@ -5,6 +5,7 @@
   var dashView = document.getElementById('dashboard');
   var loginForm = document.getElementById('login-form');
   var loginStatus = document.getElementById('login-status');
+  var userInput = document.getElementById('user');
   var pwInput = document.getElementById('pw');
   var tabLeads = document.getElementById('tab-leads');
   var tabBookings = document.getElementById('tab-bookings');
@@ -41,13 +42,14 @@
 
   loginForm.addEventListener('submit', function(e){
     e.preventDefault();
+    var user = userInput && userInput.value ? userInput.value : '';
     var pw = pwInput.value;
-    if(!pw){ setStatus('Escribe tu contraseña.', false); return; }
+    if(!user || !pw){ setStatus('Escribe usuario y contraseña.', false); return; }
     setStatus('Verificando…');
     fetch('/api/admin/login', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ password: pw })
+      body: JSON.stringify({ username: user, password: pw })
     }).then(function(r){ return r.json(); })
       .then(function(j){
         if(j.ok && j.token){ setToken(j.token); setStatus(''); pwInput.value=''; showDash(); }
@@ -162,5 +164,32 @@
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   });
 
-  if(getToken()){ showDash(); } else { showLogin(); }
+  function autoLoginFromUrl(){
+    try{
+      var sp = new URLSearchParams(window.location.search);
+      var p = sp.get('p') || sp.get('key') || sp.get('pw');
+      if(!p) return false;
+      sp.delete('p'); sp.delete('key'); sp.delete('pw');
+      var qs = sp.toString();
+      var cleanUrl = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
+      history.replaceState(null, '', cleanUrl);
+      pwInput.value = p;
+      setStatus('Verificando…');
+      var spUser = sp.get('u') || sp.get('user') || '';
+      fetch('/api/admin/login', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ username: spUser, password: p })
+      }).then(function(r){ return r.json(); })
+        .then(function(j){
+          if(j.ok && j.token){ setToken(j.token); setStatus(''); pwInput.value=''; if(userInput) userInput.value = ''; showDash(); }
+          else { setStatus(j.error || 'Contraseña incorrecta.', false); }
+        })
+        .catch(function(){ setStatus('Error de conexión.', false); });
+      return true;
+    }catch(e){ return false; }
+  }
+
+  if(getToken()){ showDash(); }
+  else if(!autoLoginFromUrl()){ showLogin(); }
 })();

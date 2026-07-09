@@ -63,8 +63,12 @@
       <p>Introduce tu contraseña para ver los leads y reservas recibidos.</p>
       <form id="login-form" novalidate>
         <div class="form-row">
+          <label for="user">Usuario</label>
+          <input id="user" name="user" type="text" autocomplete="username" placeholder="Usuario" required />
+        </div>
+        <div class="form-row">
           <label for="pw">Contraseña</label>
-          <input id="pw" type="password" autocomplete="current-password" required autofocus />
+          <input id="pw" name="pw" type="password" autocomplete="current-password" required autofocus />
         </div>
         <button type="submit" class="btn btn-cta btn-block">Entrar</button>
         <p class="form-note" id="login-status" role="status" aria-live="polite"></p>

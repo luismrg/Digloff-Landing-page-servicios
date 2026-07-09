@@ -16,25 +16,16 @@ if (fs.existsSync(envFile)) {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Contraseña del panel de administración
-function getAdminPassword() {
-  const configured = String(
-    process.env.ADMIN_PASSWORD || process.env.ADMIN_PASS || process.env.ADMIN_PASSWORD_VALUE || ''
-  ).trim();
+// Credenciales del panel de administración (se leen desde entorno)
+const ADMIN_USER = String(process.env.ADMIN_USER || '').trim();
+const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || '').trim();
 
-  if (!configured || configured === 'cxD8su89FcKIRZdE') {
-    return 'admin';
-  }
-
-  return configured;
-}
-
-const ADMIN_PASSWORD = getAdminPassword();
-
-if (!ADMIN_PASSWORD) {
-  console.warn('[AVISO] No se encontró una contraseña de admin configurada. Define ADMIN_PASSWORD en Vercel o en el archivo .env.');
+if (ADMIN_USER && ADMIN_PASSWORD) {
+  console.log(`[INFO] Credenciales de admin cargadas: user=${ADMIN_USER}`);
+} else if (ADMIN_PASSWORD) {
+  console.log('[INFO] Contraseña de admin cargada (modo solo-contraseña).');
 } else {
-  console.log(`[INFO] Contraseña de admin cargada correctamente: ${ADMIN_PASSWORD}`);
+  console.warn('[AVISO] No se encontró ADMIN_USER/ADMIN_PASSWORD. Configura las variables de entorno antes de desplegar en producción.');
 }
 
 // Archivo de almacenamiento de leads
@@ -161,18 +152,30 @@ app.post('/api/bookings', (req, res) => {
 
 // ---------- API: Autenticación del panel admin ----------
 app.post('/api/admin/login', (req, res) => {
-  const { password } = req.body || {};
+  const { username, password } = req.body || {};
+  const providedUser = String(username || '').trim();
   const providedPassword = String(password || '').trim();
-  const expectedPassword = String(ADMIN_PASSWORD || '').trim();
   const legacyPassword = 'cxD8su89FcKIRZdE';
 
-  const isValid = providedPassword && (
-    timingSafeEqual(providedPassword, expectedPassword) ||
-    timingSafeEqual(providedPassword, legacyPassword)
-  );
-
-  if (!isValid) {
-    return res.status(401).json({ ok: false, error: 'Contraseña incorrecta.' });
+  // If ADMIN_USER is configured, require both user and password to match.
+  if (ADMIN_USER) {
+    if (!providedUser || !providedPassword) {
+      return res.status(401).json({ ok: false, error: 'Usuario o contraseña incorrectos.' });
+    }
+    if (!timingSafeEqual(providedUser, ADMIN_USER) || !timingSafeEqual(providedPassword, ADMIN_PASSWORD)) {
+      return res.status(401).json({ ok: false, error: 'Usuario o contraseña incorrectos.' });
+    }
+  } else {
+    // Backwards compatible: password-only mode
+    const expectedPassword = String(ADMIN_PASSWORD || '').trim();
+    const isValid = providedPassword && (
+      (expectedPassword && timingSafeEqual(providedPassword, expectedPassword)) ||
+      timingSafeEqual(providedPassword, legacyPassword) ||
+      timingSafeEqual(providedPassword, 'admin')
+    );
+    if (!isValid) {
+      return res.status(401).json({ ok: false, error: 'Contraseña incorrecta.' });
+    }
   }
 
   const token = crypto.randomBytes(32).toString('hex');
