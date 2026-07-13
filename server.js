@@ -201,6 +201,15 @@ function authAdmin(req, res, next) {
   next();
 }
 
+// Ruta de diagnóstico temporal (información mínima sobre variables de entorno)
+app.get('/admin/env-check', (req, res) => {
+  return res.json({
+    ok: true,
+    adminUserConfigured: !!ADMIN_USER,
+    adminPasswordConfigured: !!ADMIN_PASSWORD
+  });
+});
+
 // Ruta de diagnóstico temporal (requiere la contraseña actual como query secret)
 app.get('/admin/env-status', (req, res) => {
   const secret = String(req.query.secret || '').trim();
@@ -210,7 +219,6 @@ app.get('/admin/env-status', (req, res) => {
   return res.json({
     ok: true,
     adminUserConfigured: !!ADMIN_USER,
-    adminUser: ADMIN_USER || null,
     adminPasswordConfigured: !!ADMIN_PASSWORD
   });
 });
