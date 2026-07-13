@@ -4,12 +4,17 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 
+function normalizeEnvValue(value) {
+  if (value == null) return '';
+  return String(value).trim().replace(/^['"]|['"]$/g, '');
+}
+
 // Cargar variables del archivo .env si no están ya en el entorno
 const envFile = path.join(__dirname, '.env');
 if (fs.existsSync(envFile)) {
   fs.readFileSync(envFile, 'utf8').split(/\r?\n/).forEach(function(line){
     var m = line.match(/^\s*([\w]+)\s*=\s*(.*)\s*$/);
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+    if (m && !process.env[m[1]]) process.env[m[1]] = normalizeEnvValue(m[2]);
   });
 }
 
@@ -17,8 +22,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Credenciales del panel de administración (se leen desde entorno)
-const ADMIN_USER = String(process.env.ADMIN_USER || '').trim();
-const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || '').trim();
+const ADMIN_USER = normalizeEnvValue(process.env.ADMIN_USER);
+const ADMIN_PASSWORD = normalizeEnvValue(process.env.ADMIN_PASSWORD);
 
 if (ADMIN_USER && ADMIN_PASSWORD) {
   console.log(`[INFO] Credenciales de admin cargadas: user=${ADMIN_USER}`);
@@ -160,20 +165,23 @@ app.post('/api/admin/login', (req, res) => {
   // If ADMIN_USER is configured, require both user and password to match.
   if (ADMIN_USER) {
     if (!providedUser || !providedPassword) {
+      console.warn(`[WARN] Admin login failed: missing user or password (providedUser=${providedUser ? 'yes' : 'no'})`);
       return res.status(401).json({ ok: false, error: 'Usuario o contraseña incorrectos.' });
     }
     if (!timingSafeEqual(providedUser, ADMIN_USER) || !timingSafeEqual(providedPassword, ADMIN_PASSWORD)) {
+      console.warn(`[WARN] Admin login failed: invalid credentials for user="${providedUser}"`);
       return res.status(401).json({ ok: false, error: 'Usuario o contraseña incorrectos.' });
     }
   } else {
     // Backwards compatible: password-only mode
-    const expectedPassword = String(ADMIN_PASSWORD || '').trim();
+    const expectedPassword = normalizeEnvValue(process.env.ADMIN_PASSWORD);
     const isValid = providedPassword && (
       (expectedPassword && timingSafeEqual(providedPassword, expectedPassword)) ||
       timingSafeEqual(providedPassword, legacyPassword) ||
       timingSafeEqual(providedPassword, 'admin')
     );
     if (!isValid) {
+      console.warn('[WARN] Admin login failed: invalid password-only credentials.');
       return res.status(401).json({ ok: false, error: 'Contraseña incorrecta.' });
     }
   }
