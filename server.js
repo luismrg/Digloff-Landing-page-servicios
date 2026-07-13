@@ -201,6 +201,20 @@ function authAdmin(req, res, next) {
   next();
 }
 
+// Ruta de diagnóstico temporal (requiere la contraseña actual como query secret)
+app.get('/admin/env-status', (req, res) => {
+  const secret = String(req.query.secret || '').trim();
+  if (!secret || !ADMIN_PASSWORD || !timingSafeEqual(secret, ADMIN_PASSWORD)) {
+    return res.status(401).json({ ok: false, error: 'No autorizado.' });
+  }
+  return res.json({
+    ok: true,
+    adminUserConfigured: !!ADMIN_USER,
+    adminUser: ADMIN_USER || null,
+    adminPasswordConfigured: !!ADMIN_PASSWORD
+  });
+});
+
 // ---------- API: Listar leads (protegido) ----------
 app.get('/api/admin/leads', authAdmin, (req, res) => {
   const leads = readStored('leads', LEADS_FILE).slice().sort((a, b) =>
