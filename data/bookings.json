@@ -22,5 +22,29 @@
     "notes": "",
     "status": "pendiente",
     "createdAt": "2026-07-08T22:33:05.430Z"
+  },
+  {
+    "id": "1ab0ec27-2e22-4a55-a0fa-c308eb1570a2",
+    "name": "Test",
+    "email": "test@example.com",
+    "phone": "+34 600 000 000",
+    "date": "2026-07-15",
+    "time": "10:00",
+    "service": "Automatización",
+    "notes": "",
+    "status": "pendiente",
+    "createdAt": "2026-07-09T14:21:27.802Z"
+  },
+  {
+    "id": "a15a38a7-312c-4542-b0ed-8b1fb3ef7e52",
+    "name": "Test",
+    "email": "test@example.com",
+    "phone": "+34 600 000 000",
+    "date": "2026-07-15",
+    "time": "10:00",
+    "service": "Automatización",
+    "notes": "",
+    "status": "pendiente",
+    "createdAt": "2026-07-09T14:22:50.260Z"
   }
 ]
